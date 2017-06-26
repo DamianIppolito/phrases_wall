@@ -1,12 +1,12 @@
 <?php
 /**
- * User class
+ * Phras class
  * @package phrases_wall
  * @author Damian Ippolito <damian.ippolito@gmail.com>
  * @copyright Copyright (c) 2017, Damian Ippolito
  * @version 1.0 2017-06-26
  */
-class PS_User {
+class Phrase {
 
 	private $id = NULL;
   private $id_user;
