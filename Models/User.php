@@ -6,7 +6,7 @@
  * @copyright Copyright (c) 2017, Damian Ippolito
  * @version 1.0 2017-06-26
  */
-include_once('connection.php');
+include_once('../class/connection.php');
 
 class User {
 
