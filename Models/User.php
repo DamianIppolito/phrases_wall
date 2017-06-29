@@ -6,11 +6,13 @@
  * @copyright Copyright (c) 2017, Damian Ippolito
  * @version 1.0 2017-06-26
  */
+include_once('connection.php');
+
 class User {
 
 	private $id = NULL;
 	private $alias;
-	private $name;
+	private $first_name;
 	private $last_name;
 	private $email;
 	private $password;
@@ -24,14 +26,14 @@ class User {
 	 * @return int $id
 	 * @version 1.0 2017-06-26
 	*/
-	public function getID(){
+	public function getId(){
 		return intval($this->id);
 	}
 	/**
 	 * @param int $id
 	 * @version 1.0 2017-06-26
 	*/
-	public function setID($id){
+	public function setId($id){
 		$this->id = intval($id);
 	}
 
@@ -51,18 +53,18 @@ class User {
 	}
 
 	/**
-	 * @return string $name
+	 * @return string $first_name
 	 * @version 1.0 2017-06-26
 	*/
-	public function getName(){
-		return $this->name;
+	public function getFirstName(){
+		return $this->first_name;
 	}
 	/**
-	 * @param string $name
+	 * @param string $first_name
 	 * @version 1.0 2017-06-26
 	*/
-	public function setName($name){
-		$this->name = $name;
+	public function setFirstName($first_name){
+		$this->first_name = $first_name;
 	}
 
 	/**
@@ -185,12 +187,6 @@ class User {
     $this->favorite_phrases = $favorite_phrases;
   }
 
-
-  function __construct() {
-       $this->favorite_phrases = $this->retriveFavoritePhrases();
-   }
-
-
 	/**
 	* Recoge los Users de tabla
 	* @return array (obj) User
@@ -222,27 +218,38 @@ class User {
 			$SQL_onlyactive = " AND `active` = 1";
 		}
 
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
+    $db = Db::getInstance();
     $stmt = $db->query('SELECT * FROM `users` WHERE 1'.$SQL_onlyactive.$SQL_order);
-    $results = $stmt->fetchAll();
+    $results = $stmt->fetchAll(PDO::FETCH_CLASS, 'User');
     return $results;
 
 	}
 
   /**
 	* Busqueda de un ususrio concreto por ID
-	* @param int $ID ID del usuario
+	* @param int $id ID del usuario
   * @return (obj) User
 	* @version 1.0 2017-06-26
 	*/
-	public static function getById($ID){
-
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('SELECT * FROM `users` WHERE `id` = :id AND `active` = '1' LIMIT 1');
-    $stmt->bindValue(':id', $ID, PDO::PARAM_INT);
+	public static function getById($id){
+    $db = Db::getInstance();
+    $stmt = $db->prepare('SELECT * FROM `users` WHERE `id` = :id AND `active` = '1' LIMIT 1');
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->fetch();
-    return $result;
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+		$user = new User();
+		$user->setId($result['id']);
+		$user->setAlias($result['alias']);
+		$user->setFirstName($result['first_name']);
+		$user->setLastName($result['last_name']);
+		$user->setEmail($result['email']);
+		$user->setPassword($result['password']);
+		$user->setToken($result['token']);
+		$user->setActive($result['active']);
+		$user->setRememberMe($result['rememberme']);
+		$user->setTimeStamp($result['time_stamp']);
+		$user->setFavoritePhrases($this->retrieveFavoritePhrases());
+    return $user;
 
 	}
 
@@ -254,15 +261,13 @@ class User {
 	* @version 1.0 2017-06-26
 	*/
 	public function login($email, $pass, $remember){
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('SELECT * FROM `users` WHERE `email` = :email AND `password` = :password AND `active` = 1 LIMIT 1');
+    $db = Db::getInstance();
+    $stmt = $db->prepare('SELECT * FROM `users` WHERE `email` = :email AND `password` = :password AND `active` = 1 LIMIT 1');
     $stmt->bindValue(':email', $email);
     $stmt->bindValue(':password', 'AES_ENCRYPT("'. $pass .'", "'. substr($pass, 0, 2) .'")');
     $stmt->execute();
     $result = $stmt->fetch();
     if($result)	{
-
-
       $token = '';
       $possible = '0123456789bcdfghjkmnpqrstvwxyz';
       $i = 0;
@@ -282,8 +287,7 @@ class User {
         }
       }
 
-
-      $stmt = $db->query('UPDATE `users` SET `token` = :token AND `rememberme` = :rememberme WHERE `id` = :id');
+      $stmt = $db->prepare('UPDATE `users` SET `token` = :token AND `rememberme` = :rememberme WHERE `id` = :id');
       $stmt->bindValue(':token', $token);
       $stmt->bindValue(':id', $result['id'], PDO::PARAM_INT);
       $stmt->bindValue(':rememberme', $remember, PDO::PARAM_INT);
@@ -311,8 +315,8 @@ class User {
 	* @version 1.0 2017-06-26
 	*/
 	public function logout(){
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('UPDATE `users` SET `token` = '' WHERE `id` = :id');
+    $db = Db::getInstance();
+    $stmt = $db->preprare('UPDATE `users` SET `token` = '' WHERE `id` = :id');
     $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
     $stmt->execute();
     $result = $stmt->fetch();
@@ -336,8 +340,8 @@ class User {
 
 		if($this->id == "")	{
 
-      $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-      $stmt = $db->query('
+      $db = Db::getInstance();
+      $stmt = $db->preprare('
         INSERT INTO `users` (
           `id`,
           `alias`,
@@ -348,8 +352,10 @@ class User {
           `token`,
           `rememberme`,
           `active`,
-          `time_stamp`)
-        VALUES(
+          `time_stamp`
+				)
+        VALUES
+				(
           :id,
           :alias,
           :name,
@@ -360,7 +366,7 @@ class User {
           :rememberme,
           :active,
           :time_stamp
-          )
+        )
       ');
       $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
       $stmt->bindValue(':alias', $this->alias);
@@ -382,8 +388,8 @@ class User {
 			}
 		}
 		else{
-      $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-      $stmt = $db->query('
+      $db = Db::getInstance();
+      $stmt = $db->prepare('
         UPDATE `users` set
         `alias` = :alias,
         `name` = :name,
@@ -391,7 +397,8 @@ class User {
         `email` = :email,
         `password` = :password,
         `token` = :token,
-        `rememberme` = :rememberme, `active` = :active,
+        `rememberme` = :rememberme,
+				`active` = :active,
         `time_stamp` = :time_stamp
       WHERE `id` = :id;');
 
@@ -423,8 +430,8 @@ class User {
 	* @version 1.0 2017-06-26
 	*/
 	public function exists(){
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('SELECT * FROM `users` WHERE `email` = :email AND `active` = '1' LIMIT 1');
+  	$db = Db::getInstance();
+    $stmt = $db->prepare('SELECT * FROM `users` WHERE `email` = :email AND `active` = '1' LIMIT 1');
     $stmt->bindValue(':email', $email);
     $stmt->execute();
     $result = $stmt->fetch();
@@ -446,8 +453,8 @@ class User {
 		$token = $_COOKIE("User");
 
 		if ($token != ""){
-      $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-      $stmt = $db->query('"SELECT * FROM `users` WHERE `token` = :token AND `active` = '1' LIMIT 1');
+      $db = Db::getInstance();
+      $stmt = $db->prepare('"SELECT * FROM `users` WHERE `token` = :token AND `active` = '1' LIMIT 1');
       $stmt->bindValue(':token', $token);
       $stmt->execute();
       $result = $stmt->fetch();
@@ -468,7 +475,7 @@ class User {
 	}
 
   private function retrieveFavoritePhrases(){
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
+    $db = Db::getInstance();
     $stmt = $db->query('SELECT `id` FROM `user_favorites` WHERE `id_user` = :id_user');
     $stmt->bindValue(':id_user', $this->id, PDO::PARAM_INT);
     $stmt->execute();

@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2017, Damian Ippolito
  * @version 1.0 2017-06-26
  */
+include_once('connection.php');
 class Phrase {
 
 	private $id = NULL;
@@ -79,10 +80,9 @@ class Phrase {
   * @version 1.0 2017-06-26
   */
   public function getPhrases(){
-
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
+		$db = Db::getInstance();
     $stmt = $db->query('SELECT * FROM `phrases` ORDER BY `id` DESC');
-    $results = $stmt->fetchAll();
+    $results = $stmt->fetchAll(PDO::FETCH_CLASS, 'Phrase');
     return $results;
 
   }
@@ -95,12 +95,17 @@ class Phrase {
   */
   public static function getById($ID){
 
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('SELECT * FROM `phrases` WHERE `id` = :id LIMIT 1');
+    $db = Db::getInstance();
+    $stmt = $db->prepare('SELECT * FROM `phrases` WHERE `id` = :id LIMIT 1');
     $stmt->bindValue(':id', $ID, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->fetch();
-    return $result;
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+		$phrase = new Phrase();
+		$phrase->setId($result['id']);
+		$phrase->setIdUser($result['id_user']);
+		$phrase->setText($result['text']);
+		$phrase->setTimeStamp($result['time_stamp']);
+    return $phrase;
 
   }
 
@@ -109,8 +114,8 @@ class Phrase {
 	* @version 1.0 2017-06-26
 	*/
 	public function save()	{
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('
+    $db = Db::getInstance();
+    $stmt = $db->prepare('
       INSERT INTO `phrases` (
         `id`,
         `id_user`,
@@ -144,8 +149,8 @@ class Phrase {
 	* @version 1.0 2017-06-26
 	*/
   public function makeFavorite($id_user){
-    $db = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8mb4', 'username', 'password');
-    $stmt = $db->query('
+    $db = Db::getInstance();
+    $stmt = $db->prepare('
       INSERT INTO `user_favorites` (
         `id`,
         `id_user`,
